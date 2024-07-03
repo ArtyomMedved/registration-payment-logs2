@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const pool = require('./db'); // Импортируем конфигурацию базы данных
 const multer = require('multer');
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,6 +12,7 @@ const port = process.env.PORT || 3000;
 // Middleware для разбора JSON и URL-encoded данных
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
 
 // Настройка сервера для использования EJS шаблонов и статических файлов
 app.set('view engine', 'ejs');
@@ -40,7 +42,7 @@ app.post('/upload-image', upload.single('image'), async (req, res) => {
     console.log('Uploaded file:', req.file);
 
     // Возвращаем URL загруженного изображения для дальнейшего использования
-    const imageUrl = `http://192.168.1.97:${port}/uploads/${req.file.filename}`;
+    const imageUrl = `http://85.159.226.160:${port}/uploads/${req.file.filename}`;
     res.json({ url: imageUrl });
   } catch (error) {
     console.error('Error uploading file:', error);
