@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration Logs</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 800px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            width: 60px;
+            height: 60px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        .btn-show-db, .btn-show-posts,  .btn-show-deleted{
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn-show-db:hover, .btn-show-posts:hover {
+            background-color: #2d3f53;
+        }
+        #db-content, #posts-content {
+            display: none;
+        }
+        .posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .post-item, .deleted-post-item {
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+.post-item img, .deleted-post-item img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto 10px;
+    border-radius: 5px;
+}
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img class="logo" src="https://i.imgur.com/JO3BhBQ.png" alt="SpinExcursions Logo">
+            <h1>SpinExcursions Server - User Registration Logs</h1>
+        </div>
+        <button class="btn-show-db" onclick="toggleContent('db-content', 'showDatabase')">Показать БД пользователей</button>
+        <div id="db-content">
+            <h2>Database Content</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Payment Methods</th>
+                    </tr>
+                </thead>
+                <tbody id="db-users">
+                    <!-- Здесь будут отображаться данные из базы данных -->
+                </tbody>
+            </table>
+        </div>
+        <button class="btn-show-posts" onclick="toggleContent('posts-content', 'showPosts')">Показать посты</button>
+        <div id="posts-content">
+            <h2>Posts Content</h2>
+            <div class="posts-grid" id="posts-list">
+                <!-- Здесь будут отображаться посты -->
+            </div>
+        </div>
+        <button class="btn-show-deleted" onclick="toggleContent('deleted-posts-content', 'showDeletedPosts')">Показать удаленные посты</button>
+        <div id="deleted-posts-content">
+            <h2>Удаленные посты</h2>
+            <div class="posts-grid" id="deleted-posts-list">
+                <!-- Здесь будут отображаться удаленные посты -->
+            </div>
+        </div>
+    </div>
+    <script>
+        async function showDatabase() {
+            const response = await fetch('/fetch-db');
+            const data = await response.json();
+            const dbUsers = document.getElementById('db-users');
+            dbUsers.innerHTML = '';
+            data.users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${user.id}</td><td>${user.name}</td><td>${user.email}</td><td>${user.payment_methods}</td>`;
+                dbUsers.appendChild(tr);
+            });
+        }
+
+        async function showPosts() {
+        const response = await fetch('/posts');
+        const posts = await response.json();
+        const postsList = document.getElementById('posts-list');
+        postsList.innerHTML = '';
+        posts.forEach(post => {
+            const div = document.createElement('div');
+            div.className = 'post-item';
+            div.innerHTML = `<strong>${post.author_name}</strong>: ${post.text} <br>
+                             <img src="${post.image}" alt="Post Image"> <br>
+                             Likes: ${post.likes} - Dislikes: ${post.dislikes}
+                             <button class="delete-btn" onclick="confirmDelete('${post.id}')">Удалить пост</button>`;
+            postsList.appendChild(div);
+        });
+    }
+
+    async function confirmDelete(postId) {
+        const reason = prompt('Пожалуйста, укажите причину удаления:');
+        if (reason === null || reason === '') {
+            alert('Укажите причину удаления!');
+            return;
+        }
+
+        const confirmed = confirm(`Вы уверены, что хотите удалить этот пост?\nПричина: ${reason}`);
+        if (confirmed) {
+            await deletePost(postId, reason);
+        }
+    }
+
+    async function deletePost(postId, reason) {
+        try {
+            const response = await fetch(`/posts/${postId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason })
+            });
+
+            if (response.ok) {
+                // Если пост успешно удален, обновляем список постов
+                showPosts();
+                alert('Пост успешно удален');
+            } else {
+                console.error('Failed to delete post');
+                alert('Не удалось удалить пост');
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            alert('Ошибка удаления поста');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        showPosts();
+    });
+
+        function toggleContent(contentId, fetchFunction) {
+            const content = document.getElementById(contentId);
+            if (content.style.display === 'block') {
+                content.style.display = 'none';
+            } else {
+                content.style.display = 'block';
+                window[fetchFunction]();
+            }
+        }
+
+        async function showDeletedPosts() {
+    try {
+        const response = await fetch('/deleted-posts');
+        const deletedPosts = await response.json();
+        const deletedPostsList = document.getElementById('deleted-posts-list');
+        deletedPostsList.innerHTML = '';
+        deletedPosts.forEach(post => {
+            const div = document.createElement('div');
+            div.className = 'post-item'; // Используем класс .post-item для удаленных постов
+            div.innerHTML = `<strong>Автор:</strong> ${post.author_name} <br>
+                             <strong>Текст поста:</strong> ${post.post_text} <br>
+                             <strong>Причина удаления:</strong> ${post.reason} <br>
+                             <img src="${post.post_image}" alt="Post Image">`;
+            deletedPostsList.appendChild(div);
+        });
+    } catch (error) {
+        console.error('Error fetching deleted posts:', error);
+        alert('Ошибка загрузки удаленных постов');
+    }
+}
+
+// Вызываем функцию showDeletedPosts() при загрузке страницы или при нажатии кнопки "Показать удаленные посты"
+document.addEventListener('DOMContentLoaded', () => {
+    showDeletedPosts();
+});
+    </script>
+</body>
+</html>
